@@ -5,16 +5,24 @@ import { FavouriteToggle } from './features/favourites/FavouriteToggle';
 import type { LatestViewed } from './features/favourites/miniTemps';
 import { useFavourites } from './features/favourites/useFavourites';
 import { useMiniTemps } from './features/favourites/useMiniTemps';
+import { InstallButton } from './features/pwa/InstallButton';
+import { OfflineBanner } from './features/pwa/OfflineBanner';
+import { UpdateToast } from './features/pwa/UpdateToast';
+import { useAppUpdate } from './features/pwa/useAppUpdate';
+import { useInstallPrompt } from './features/pwa/useInstallPrompt';
+import { useOnlineStatus } from './features/pwa/useOnlineStatus';
+import { useWeatherCacheUpdates } from './features/pwa/useWeatherCacheUpdates';
 import { CitySearch } from './features/search/CitySearch';
 import { EmptyState } from './features/weather/EmptyState';
 import { useWeather } from './features/weather/useWeather';
 import { WeatherPanel } from './features/weather/WeatherPanel';
-import type { City } from './lib/api/types';
+import type { City, Coordinates } from './lib/api/types';
+import { sameCoords } from './lib/pwa/weatherCacheRules';
 
 export function App() {
   const searchRef = useRef<HTMLInputElement>(null);
   const favouritesHeadingRef = useRef<HTMLHeadingElement>(null);
-  const { state, load, retry } = useWeather();
+  const { state, load, retry, refresh } = useWeather();
   const favourites = useFavourites();
   const { isFavourite, atLimit, add, requestRemove } = favourites;
 
@@ -26,6 +34,23 @@ export function App() {
     [state],
   );
   const { tempFor } = useMiniTemps(favourites.favourites, { latest });
+
+  const appUpdate = useAppUpdate();
+  const installPrompt = useInstallPrompt();
+
+  const onReconnect = useCallback(() => {
+    if (state.status === 'error') retry();
+    else refresh();
+  }, [state.status, retry, refresh]);
+  const online = useOnlineStatus(onReconnect);
+
+  const onCacheUpdated = useCallback(
+    (coords: Coordinates) => {
+      if (state.status === 'success' && sameCoords(coords, state.city)) refresh();
+    },
+    [state, refresh],
+  );
+  useWeatherCacheUpdates(onCacheUpdated);
 
   const focusSearch = useCallback(() => {
     searchRef.current?.focus();
@@ -50,10 +75,15 @@ export function App() {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex h-16 max-w-6xl items-center px-4 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <span className="text-base font-semibold tracking-tight">WeatherBoard</span>
+          <InstallButton canInstall={installPrompt.canInstall} onInstall={() => void installPrompt.install()} />
         </div>
       </header>
+      <OfflineBanner
+        online={online}
+        showing={state.status === 'success' ? { cityName: state.city.name, fetchedAt: state.data.fetchedAt } : null}
+      />
       <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
         <div className="max-w-xl">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Weather, at a glance</h1>
@@ -88,6 +118,12 @@ export function App() {
         onConfirm={favourites.confirmRemove}
         onCancel={favourites.cancelRemove}
         fallbackFocus={favouritesHeadingRef}
+      />
+      <UpdateToast
+        needRefresh={appUpdate.needRefresh}
+        offlineReady={appUpdate.offlineReady}
+        onUpdate={() => void appUpdate.update()}
+        onDismiss={appUpdate.dismiss}
       />
     </div>
   );

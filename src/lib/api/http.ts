@@ -1,9 +1,18 @@
+import { readFetchedAt } from '../pwa/weatherCacheRules';
 import { HttpError, NetworkError, ParseError, abortError } from './errors';
 
 interface FetchJsonOptions {
   signal?: AbortSignal | undefined;
   headers?: Record<string, string>;
   timeoutMs?: number;
+  /** 'no-store' also tells our service worker not to cache the response. */
+  cache?: RequestCache;
+}
+
+export interface JsonWithMeta {
+  body: unknown;
+  /** When the service worker fetched this from the network; null when it came straight from the network. */
+  fetchedAt: number | null;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -24,7 +33,12 @@ export function parseRetryAfter(value: string | null, now = Date.now()): number 
  * - HttpError on non-2xx, ParseError on invalid JSON.
  */
 export async function fetchJson(url: string, options: FetchJsonOptions = {}): Promise<unknown> {
-  const { signal, headers, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+  return (await fetchJsonWithMeta(url, options)).body;
+}
+
+/** fetchJson, plus the service worker's fetched-at stamp so cached data shows its real age. */
+export async function fetchJsonWithMeta(url: string, options: FetchJsonOptions = {}): Promise<JsonWithMeta> {
+  const { signal, headers, cache, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
   if (signal?.aborted) throw abortError();
 
   const controller = new AbortController();
@@ -38,7 +52,7 @@ export async function fetchJson(url: string, options: FetchJsonOptions = {}): Pr
 
   let response: Response;
   try {
-    response = await fetch(url, { signal: controller.signal, ...(headers ? { headers } : {}) });
+    response = await fetch(url, { signal: controller.signal, ...(headers ? { headers } : {}), ...(cache ? { cache } : {}) });
   } catch {
     if (timedOut) throw new NetworkError('Request timed out');
     if (signal?.aborted) throw abortError();
@@ -53,7 +67,7 @@ export async function fetchJson(url: string, options: FetchJsonOptions = {}): Pr
   }
 
   try {
-    return (await response.json()) as unknown;
+    return { body: (await response.json()) as unknown, fetchedAt: readFetchedAt(response.headers) };
   } catch {
     if (signal?.aborted) throw abortError();
     throw new ParseError('body');

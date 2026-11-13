@@ -48,9 +48,12 @@ export function useWeather({ fetchWeather = getWeather, store = defaultStorage }
     latestRequest.current += 1;
   }, []);
 
-  /** Starts the request; the caller is responsible for showing the loading state. */
+  /**
+   * Starts the request; the caller is responsible for showing the loading state.
+   * A silent fetch (background refresh) keeps what is on screen if it fails.
+   */
   const fetchFor = useCallback(
-    (city: City) => {
+    (city: City, silent = false) => {
       cancel();
       currentCity.current = city;
       const requestId = latestRequest.current;
@@ -66,7 +69,7 @@ export function useWeather({ fetchWeather = getWeather, store = defaultStorage }
           saveLastViewed({ lastCity: city, fetchedAt: data.fetchedAt }, storeNow);
         })
         .catch((err: unknown) => {
-          if (requestId !== latestRequest.current || isAbortError(err)) return;
+          if (requestId !== latestRequest.current || isAbortError(err) || silent) return;
           restorePending.current = false;
           setState({ status: 'error', city, error: toAppError(err, 'weather') });
         })
@@ -90,6 +93,11 @@ export function useWeather({ fetchWeather = getWeather, store = defaultStorage }
     if (currentCity.current) load(currentCity.current);
   }, [load]);
 
+  /** Re-fetches the shown city without a loading state, e.g. after the offline cache was refreshed. */
+  const refresh = useCallback(() => {
+    if (state.status === 'success') fetchFor(state.city, true);
+  }, [fetchFor, state]);
+
   // Restore the last viewed city once on mount (state already shows it as loading).
   useEffect(() => {
     const city = currentCity.current;
@@ -97,5 +105,5 @@ export function useWeather({ fetchWeather = getWeather, store = defaultStorage }
     return cancel;
   }, [cancel, fetchFor]);
 
-  return { state, load, retry };
+  return { state, load, retry, refresh };
 }

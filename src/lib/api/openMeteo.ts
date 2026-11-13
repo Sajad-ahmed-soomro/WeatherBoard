@@ -1,6 +1,7 @@
 import { FORECAST_DAYS, mergeCurrentIntoToday } from './aggregate';
 import { fromWmoCode } from './conditions';
-import { fetchJson } from './http';
+import { fetchJson, fetchJsonWithMeta } from './http';
+import { oldestFetchedAt } from './freshness';
 import { arr, num, obj } from './parse';
 import { ParseError } from './errors';
 import type { Coordinates, CurrentConditions, CurrentSnapshot, DailyForecast, WeatherData } from './types';
@@ -72,7 +73,8 @@ export async function fetchOpenMeteoWeather(coords: Coordinates, signal?: AbortS
     daily: 'weather_code,temperature_2m_max,temperature_2m_min',
     forecast_days: String(FORECAST_DAYS),
   });
-  return normaliseOpenMeteo(coords, await fetchJson(`${BASE}?${params}`, { signal }), Date.now());
+  const { body, fetchedAt } = await fetchJsonWithMeta(`${BASE}?${params}`, { signal });
+  return normaliseOpenMeteo(coords, body, oldestFetchedAt([fetchedAt]));
 }
 
 /** Pure: raw current-only body → CurrentSnapshot. Exported for fixture tests. */
@@ -82,5 +84,5 @@ export function normaliseOpenMeteoCurrent(body: unknown, fetchedAt: number): Cur
 
 export async function fetchOpenMeteoCurrent(coords: Coordinates, signal?: AbortSignal): Promise<CurrentSnapshot> {
   const params = new URLSearchParams({ ...baseParams(coords), forecast_days: '1' });
-  return normaliseOpenMeteoCurrent(await fetchJson(`${BASE}?${params}`, { signal }), Date.now());
+  return normaliseOpenMeteoCurrent(await fetchJson(`${BASE}?${params}`, { signal, cache: 'no-store' }), Date.now());
 }

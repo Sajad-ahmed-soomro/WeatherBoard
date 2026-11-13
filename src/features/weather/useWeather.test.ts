@@ -149,6 +149,37 @@ describe('useWeather', () => {
     expect(result.current.state.status).toBe('success');
   });
 
+  it('refresh() swaps in newer data without a loading state', async () => {
+    const { result, calls } = setup();
+    act(() => result.current.load(LAHORE));
+    calls[0]?.resolve(weather(1000, 10));
+    await flush();
+
+    act(() => result.current.refresh());
+    expect(result.current.state).toMatchObject({ status: 'success', data: { fetchedAt: 1000 } });
+    calls[1]?.resolve(weather(5000, 12));
+    await flush();
+    expect(result.current.state).toMatchObject({ status: 'success', data: { fetchedAt: 5000, current: { tempC: 12 } } });
+  });
+
+  it('a failed refresh keeps the data on screen', async () => {
+    const { result, calls } = setup();
+    act(() => result.current.load(LAHORE));
+    calls[0]?.resolve(weather(1000));
+    await flush();
+
+    act(() => result.current.refresh());
+    calls[1]?.reject(new AppError('network', 'offline', { id: 'retry', label: 'Try again' }));
+    await flush();
+    expect(result.current.state).toMatchObject({ status: 'success', data: { fetchedAt: 1000 } });
+  });
+
+  it('refresh() does nothing unless weather is showing', () => {
+    const { result, calls } = setup();
+    act(() => result.current.refresh());
+    expect(calls).toHaveLength(0);
+  });
+
   it('aborts the in-flight request on unmount', () => {
     const { result, calls, unmount } = setup();
     act(() => result.current.load(LAHORE));

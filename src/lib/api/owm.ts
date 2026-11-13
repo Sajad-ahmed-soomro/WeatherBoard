@@ -1,8 +1,9 @@
 import { aggregateDaily, type ForecastSlot } from './aggregate';
 import { capitalise, kindFromOwmId } from './conditions';
 import { requireKey } from './config';
-import { fetchJson } from './http';
+import { fetchJson, fetchJsonWithMeta } from './http';
 import { arr, num, obj, str } from './parse';
+import { oldestFetchedAt } from './freshness';
 import type { Condition, Coordinates, CurrentConditions, CurrentSnapshot, WeatherData } from './types';
 
 const BASE = 'https://api.openweathermap.org/data/2.5';
@@ -70,11 +71,11 @@ function owmParams(coords: Coordinates): URLSearchParams {
 
 export async function fetchOwmWeather(coords: Coordinates, signal?: AbortSignal): Promise<WeatherData> {
   const params = owmParams(coords);
-  const [weatherBody, forecastBody] = await Promise.all([
-    fetchJson(`${BASE}/weather?${params}`, { signal }),
-    fetchJson(`${BASE}/forecast?${params}`, { signal }),
+  const [weather, forecast] = await Promise.all([
+    fetchJsonWithMeta(`${BASE}/weather?${params}`, { signal }),
+    fetchJsonWithMeta(`${BASE}/forecast?${params}`, { signal }),
   ]);
-  return normaliseOwm(coords, weatherBody, forecastBody, Date.now());
+  return normaliseOwm(coords, weather.body, forecast.body, oldestFetchedAt([weather.fetchedAt, forecast.fetchedAt]));
 }
 
 /** Pure: raw /weather body → CurrentSnapshot. Exported for fixture tests. */
@@ -83,6 +84,6 @@ export function normaliseOwmCurrent(weatherBody: unknown, fetchedAt: number): Cu
 }
 
 export async function fetchOwmCurrent(coords: Coordinates, signal?: AbortSignal): Promise<CurrentSnapshot> {
-  const body = await fetchJson(`${BASE}/weather?${owmParams(coords)}`, { signal });
+  const body = await fetchJson(`${BASE}/weather?${owmParams(coords)}`, { signal, cache: 'no-store' });
   return normaliseOwmCurrent(body, Date.now());
 }
