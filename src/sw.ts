@@ -15,6 +15,9 @@ import {
   type WeatherRequestInfo,
   type WeatherUpdatedMessage,
 } from './lib/pwa/weatherCacheRules';
+import { getWeather } from './lib/api/weather';
+import { REMINDER_TAG, runDailyCheck } from './features/notifications/dailyCheck';
+import { settingsRepo } from './features/notifications/settings';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -108,4 +111,37 @@ function isSkipWaiting(data: unknown): boolean {
 // Sent by the page's "Reload" button (workbox-window posts { type: 'SKIP_WAITING' }).
 self.addEventListener('message', (event: ExtendableMessageEvent) => {
   if (isSkipWaiting(event.data)) void self.skipWaiting();
+});
+
+/** Periodic Background Sync (Chromium, installed app only). Not in the standard WebWorker typings. */
+interface PeriodicSyncEvent extends ExtendableEvent {
+  readonly tag: string;
+}
+
+function isPeriodicSync(event: Event): event is PeriodicSyncEvent {
+  return 'tag' in event && 'waitUntil' in event;
+}
+
+// The browser decides when to wake us (often hours apart); each wake-up just checks whether
+// today's reminder is due. No timers: a service worker can be stopped at any moment.
+self.addEventListener('periodicsync', (event: Event) => {
+  if (!isPeriodicSync(event) || event.tag !== REMINDER_TAG) return;
+  event.waitUntil(
+    runDailyCheck({
+      repo: settingsRepo,
+      fetchWeather: (lat, lon) => getWeather(lat, lon),
+      show: ({ title, body }) =>
+        self.registration.showNotification(title, { body, tag: REMINDER_TAG, icon: '/icons/pwa-192x192.png', badge: '/icons/pwa-192x192.png', data: { url: '/' } }),
+    }).then(() => undefined),
+  );
+});
+
+self.addEventListener('notificationclick', (event: NotificationEvent) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      const open = windows.find((w) => new URL(w.url).origin === self.location.origin);
+      return open ? open.focus().then(() => undefined) : self.clients.openWindow('/').then(() => undefined);
+    }),
+  );
 });

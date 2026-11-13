@@ -5,6 +5,9 @@ import { FavouriteToggle } from './features/favourites/FavouriteToggle';
 import type { LatestViewed } from './features/favourites/miniTemps';
 import { useFavourites } from './features/favourites/useFavourites';
 import { useMiniTemps } from './features/favourites/useMiniTemps';
+import { ReminderCard } from './features/notifications/ReminderCard';
+import { ReminderExplainer } from './features/notifications/ReminderExplainer';
+import { useReminder } from './features/notifications/useReminder';
 import { InstallButton } from './features/pwa/InstallButton';
 import { OfflineBanner } from './features/pwa/OfflineBanner';
 import { UpdateToast } from './features/pwa/UpdateToast';
@@ -34,6 +37,12 @@ export function App() {
     [state],
   );
   const { tempFor } = useMiniTemps(favourites.favourites, { latest });
+
+  const reminderCity = useMemo(
+    () => (state.status === 'success' ? { name: state.city.name, lat: state.city.lat, lon: state.city.lon } : null),
+    [state],
+  );
+  const reminder = useReminder({ city: reminderCity });
 
   const appUpdate = useAppUpdate();
   const installPrompt = useInstallPrompt();
@@ -99,17 +108,34 @@ export function App() {
             onOpen={load}
             onRemove={requestRemove}
             headingRef={favouritesHeadingRef}
-            className="lg:sticky lg:top-6"
           />
-          <div className="min-w-0">
+          <div className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
             {state.status === 'idle' ? (
               <EmptyState onPick={load} onEditSearch={focusSearch} />
             ) : (
               <WeatherPanel state={state} onRetry={retry} onEditSearch={focusSearch} renderAction={renderFavouriteToggle} />
             )}
           </div>
+          <ReminderCard
+            view={reminder.view}
+            canEnable={reminder.canEnable}
+            timeValue={reminder.timeValue}
+            timeError={reminder.timeError}
+            saveError={reminder.saveError}
+            onEnable={reminder.requestEnable}
+            onDisable={reminder.disable}
+            onTimeChange={reminder.changeTime}
+            className="lg:col-start-1"
+          />
         </div>
       </main>
+      <ReminderExplainer
+        open={reminder.explainerOpen}
+        time={reminder.timeValue}
+        cityName={reminderCity?.name ?? 'your city'}
+        onContinue={reminder.confirmExplainer}
+        onCancel={reminder.cancelExplainer}
+      />
       <ConfirmDialog
         open={favourites.pendingRemoval !== null}
         title={`Remove ${favourites.pendingRemoval?.name ?? 'city'} from favourites?`}
