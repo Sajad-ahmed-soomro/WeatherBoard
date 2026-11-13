@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import type { RefObject } from 'react';
 import { AlertIcon, SearchIcon, Spinner } from '../../components/ui/icons';
 import type { City } from '../../lib/api/types';
 import { SuggestionList } from './SuggestionList';
@@ -6,10 +6,11 @@ import { useCityCombobox } from './useCityCombobox';
 
 interface CitySearchProps {
   onSelect: (city: City) => void;
+  /** Lets other parts of the page send the user back to the search field. */
+  inputRef: RefObject<HTMLInputElement>;
 }
 
-export function CitySearch({ onSelect }: CitySearchProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+export function CitySearch({ onSelect, inputRef }: CitySearchProps) {
   const combobox = useCityCombobox(onSelect);
   const { ids, state, cities, expanded, activeIndex, fieldError, statusText } = combobox;
   const busy = state.status === 'loading' || state.status === 'retrying';
@@ -31,7 +32,7 @@ export function CitySearch({ onSelect }: CitySearchProps) {
           autoCapitalize="words"
           spellCheck={false}
           enterKeyHint="search"
-          placeholder="Search for a city, e.g. Lahore"
+          placeholder="Search for a city"
           aria-autocomplete="list"
           aria-expanded={expanded}
           aria-controls={ids.listbox}

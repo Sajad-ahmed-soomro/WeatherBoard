@@ -49,6 +49,16 @@ export function InfoIcon(props: IconProps) {
   );
 }
 
+export function LocateIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="12" r="7.5" />
+      <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22" />
+    </Icon>
+  );
+}
+
 export function Spinner({ className = '' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" className={`animate-spin ${className}`}>
