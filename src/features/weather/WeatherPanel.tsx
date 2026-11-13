@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import type { City } from '../../lib/api/types';
 import { formatTemp } from '../../lib/units/format';
 import { CurrentCard } from './CurrentCard';
 import { ForecastList } from './ForecastList';
@@ -9,6 +11,7 @@ interface WeatherPanelProps {
   state: Exclude<WeatherState, { status: 'idle' }>;
   onRetry: () => void;
   onEditSearch: () => void;
+  renderAction?: (city: City) => ReactNode;
 }
 
 function announce(state: WeatherPanelProps['state']): string {
@@ -22,7 +25,7 @@ function announce(state: WeatherPanelProps['state']): string {
   }
 }
 
-export function WeatherPanel({ state, onRetry, onEditSearch }: WeatherPanelProps) {
+export function WeatherPanel({ state, onRetry, onEditSearch, renderAction }: WeatherPanelProps) {
   return (
     <div aria-busy={state.status === 'loading'}>
       <p className="sr-only" aria-live="polite">
@@ -34,7 +37,7 @@ export function WeatherPanel({ state, onRetry, onEditSearch }: WeatherPanelProps
       )}
       {state.status === 'success' && (
         <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
-          <CurrentCard city={state.city} data={state.data} />
+          <CurrentCard city={state.city} data={state.data} action={renderAction?.(state.city)} />
           <ForecastList data={state.data} />
         </div>
       )}

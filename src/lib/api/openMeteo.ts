@@ -3,26 +3,42 @@ import { fromWmoCode } from './conditions';
 import { fetchJson } from './http';
 import { arr, num, obj } from './parse';
 import { ParseError } from './errors';
-import type { Coordinates, DailyForecast, WeatherData } from './types';
+import type { Coordinates, CurrentConditions, CurrentSnapshot, DailyForecast, WeatherData } from './types';
 import { cityLocalDate } from '../time/cityTime';
 
 const BASE = 'https://api.open-meteo.com/v1/forecast';
 
 /** Pure: raw Open-Meteo body → WeatherData (same shape as the OWM path). */
-export function normaliseOpenMeteo(coords: Coordinates, body: unknown, fetchedAt: number): WeatherData {
-  const b = obj(body, 'body');
-  const utcOffsetSec = num(b.utc_offset_seconds, 'utc_offset_seconds');
-  const c = obj(b.current, 'current');
+const CURRENT_FIELDS = 'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day';
+
+function parseCurrent(body: Record<string, unknown>): CurrentConditions {
+  const c = obj(body.current, 'current');
   const isDay = num(c.is_day, 'current.is_day') === 1;
-  const currentWmo = fromWmoCode(num(c.weather_code, 'current.weather_code'));
-  const current = {
+  return {
     observedAt: num(c.time, 'current.time') * 1000,
     tempC: num(c.temperature_2m, 'current.temperature_2m'),
     feelsLikeC: num(c.apparent_temperature, 'current.apparent_temperature'),
     humidity: num(c.relative_humidity_2m, 'current.relative_humidity_2m'),
     windMs: num(c.wind_speed_10m, 'current.wind_speed_10m'),
-    condition: { ...currentWmo, isDay },
+    condition: { ...fromWmoCode(num(c.weather_code, 'current.weather_code')), isDay },
   };
+}
+
+function baseParams(coords: Coordinates): Record<string, string> {
+  return {
+    latitude: coords.lat.toFixed(4),
+    longitude: coords.lon.toFixed(4),
+    current: CURRENT_FIELDS,
+    timezone: 'auto',
+    timeformat: 'unixtime',
+    wind_speed_unit: 'ms',
+  };
+}
+
+export function normaliseOpenMeteo(coords: Coordinates, body: unknown, fetchedAt: number): WeatherData {
+  const b = obj(body, 'body');
+  const utcOffsetSec = num(b.utc_offset_seconds, 'utc_offset_seconds');
+  const current = parseCurrent(b);
 
   const d = obj(b.daily, 'daily');
   const times = arr(d.time, 'daily.time');
@@ -52,14 +68,19 @@ export function normaliseOpenMeteo(coords: Coordinates, body: unknown, fetchedAt
 
 export async function fetchOpenMeteoWeather(coords: Coordinates, signal?: AbortSignal): Promise<WeatherData> {
   const params = new URLSearchParams({
-    latitude: coords.lat.toFixed(4),
-    longitude: coords.lon.toFixed(4),
-    current: 'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day',
+    ...baseParams(coords),
     daily: 'weather_code,temperature_2m_max,temperature_2m_min',
-    timezone: 'auto',
-    timeformat: 'unixtime',
-    wind_speed_unit: 'ms',
     forecast_days: String(FORECAST_DAYS),
   });
   return normaliseOpenMeteo(coords, await fetchJson(`${BASE}?${params}`, { signal }), Date.now());
+}
+
+/** Pure: raw current-only body → CurrentSnapshot. Exported for fixture tests. */
+export function normaliseOpenMeteoCurrent(body: unknown, fetchedAt: number): CurrentSnapshot {
+  return { source: 'open-meteo', fetchedAt, current: parseCurrent(obj(body, 'body')) };
+}
+
+export async function fetchOpenMeteoCurrent(coords: Coordinates, signal?: AbortSignal): Promise<CurrentSnapshot> {
+  const params = new URLSearchParams({ ...baseParams(coords), forecast_days: '1' });
+  return normaliseOpenMeteoCurrent(await fetchJson(`${BASE}?${params}`, { signal }), Date.now());
 }

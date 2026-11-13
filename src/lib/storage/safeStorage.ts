@@ -6,6 +6,8 @@ export interface KeyValueStore {
 }
 
 export interface SafeStorage {
+  /** False when localStorage is blocked (private mode, disabled cookies, quota) and data lives in memory only. */
+  readonly persistent: boolean;
   read<T>(key: string, isValid: (value: unknown) => value is T): T | null;
   write(key: string, value: unknown): void;
 }
@@ -45,6 +47,10 @@ export function createSafeStorage(getBacking: () => KeyValueStore = () => window
   let backing = probe(getBacking) ?? memory;
 
   return {
+    get persistent() {
+      return backing !== memory;
+    },
+
     read(key, isValid) {
       try {
         const raw = backing.getItem(key);

@@ -22,6 +22,7 @@ describe('createSafeStorage', () => {
     const backing = workingStore();
     const store = createSafeStorage(() => backing);
     store.write('n', 42);
+    expect(store.persistent).toBe(true);
     expect(backing.data.get('n')).toBe('42');
     expect(store.read('n', isNumber)).toBe(42);
   });
@@ -30,6 +31,7 @@ describe('createSafeStorage', () => {
     const store = createSafeStorage(() => {
       throw new DOMException('denied', 'SecurityError');
     });
+    expect(store.persistent).toBe(false);
     store.write('n', 7);
     expect(store.read('n', isNumber)).toBe(7);
   });
@@ -42,6 +44,7 @@ describe('createSafeStorage', () => {
       throw new DOMException('full', 'QuotaExceededError');
     };
     store.write('n', 1);
+    expect(store.persistent).toBe(false);
     expect(store.read('n', isNumber)).toBe(1);
 
     // Stays in memory for the session rather than flip-flopping between stores.

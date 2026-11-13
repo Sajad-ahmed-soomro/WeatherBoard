@@ -1,17 +1,51 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
+import { ConfirmDialog } from './components/ui/ConfirmDialog';
+import { FavouritesPanel } from './features/favourites/FavouritesPanel';
+import { FavouriteToggle } from './features/favourites/FavouriteToggle';
+import type { LatestViewed } from './features/favourites/miniTemps';
+import { useFavourites } from './features/favourites/useFavourites';
+import { useMiniTemps } from './features/favourites/useMiniTemps';
 import { CitySearch } from './features/search/CitySearch';
 import { EmptyState } from './features/weather/EmptyState';
 import { useWeather } from './features/weather/useWeather';
 import { WeatherPanel } from './features/weather/WeatherPanel';
+import type { City } from './lib/api/types';
 
 export function App() {
   const searchRef = useRef<HTMLInputElement>(null);
+  const favouritesHeadingRef = useRef<HTMLHeadingElement>(null);
   const { state, load, retry } = useWeather();
+  const favourites = useFavourites();
+  const { isFavourite, atLimit, add, requestRemove } = favourites;
+
+  const latest = useMemo<LatestViewed | null>(
+    () =>
+      state.status === 'success'
+        ? { cityId: state.city.id, snapshot: { source: state.data.source, fetchedAt: state.data.fetchedAt, current: state.data.current } }
+        : null,
+    [state],
+  );
+  const { tempFor } = useMiniTemps(favourites.favourites, { latest });
 
   const focusSearch = useCallback(() => {
     searchRef.current?.focus();
     searchRef.current?.select();
   }, []);
+
+  const renderFavouriteToggle = useCallback(
+    (city: City) => (
+      <FavouriteToggle
+        city={city}
+        saved={isFavourite(city.id)}
+        atLimit={atLimit}
+        onAdd={add}
+        onRemove={requestRemove}
+      />
+    ),
+    [isFavourite, atLimit, add, requestRemove],
+  );
+
+  const activeId = state.status === 'idle' ? null : state.city.id;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -26,14 +60,35 @@ export function App() {
           <p className="mb-6 mt-2 text-sm text-muted">Current conditions and a 5-day forecast for any city.</p>
           <CitySearch onSelect={load} inputRef={searchRef} />
         </div>
-        <div className="mt-8">
-          {state.status === 'idle' ? (
-            <EmptyState onPick={load} onEditSearch={focusSearch} />
-          ) : (
-            <WeatherPanel state={state} onRetry={retry} onEditSearch={focusSearch} />
-          )}
+        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
+          <FavouritesPanel
+            favourites={favourites.favourites}
+            activeId={activeId}
+            persistent={favourites.persistent}
+            tempFor={tempFor}
+            onOpen={load}
+            onRemove={requestRemove}
+            headingRef={favouritesHeadingRef}
+            className="lg:sticky lg:top-6"
+          />
+          <div className="min-w-0">
+            {state.status === 'idle' ? (
+              <EmptyState onPick={load} onEditSearch={focusSearch} />
+            ) : (
+              <WeatherPanel state={state} onRetry={retry} onEditSearch={focusSearch} renderAction={renderFavouriteToggle} />
+            )}
+          </div>
         </div>
       </main>
+      <ConfirmDialog
+        open={favourites.pendingRemoval !== null}
+        title={`Remove ${favourites.pendingRemoval?.name ?? 'city'} from favourites?`}
+        description="You can add it again any time from its weather card."
+        confirmLabel="Remove"
+        onConfirm={favourites.confirmRemove}
+        onCancel={favourites.cancelRemove}
+        fallbackFocus={favouritesHeadingRef}
+      />
     </div>
   );
 }

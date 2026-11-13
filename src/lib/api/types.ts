@@ -66,3 +66,11 @@ export interface WeatherData {
   /** Today first, then the following days; at most 5 entries. */
   daily: DailyForecast[];
 }
+
+/** Current conditions without a forecast: what the favourites panel needs. */
+export interface CurrentSnapshot {
+  source: WeatherSource;
+  /** Epoch ms when this client received the data. */
+  fetchedAt: number;
+  current: CurrentConditions;
+}

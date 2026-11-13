@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { WeatherIcon } from '../../components/ui/WeatherIcon';
 import type { City, WeatherData } from '../../lib/api/types';
 import { formatHumidity, formatTemp, formatWind } from '../../lib/units/format';
@@ -8,9 +9,11 @@ import { UpdatedAgo } from './UpdatedAgo';
 interface CurrentCardProps {
   city: City;
   data: WeatherData;
+  /** Extra control for the header, e.g. the favourite toggle. */
+  action?: ReactNode;
 }
 
-export function CurrentCard({ city, data }: CurrentCardProps) {
+export function CurrentCard({ city, data, action }: CurrentCardProps) {
   const { current } = data;
   const stats = [
     { label: 'Feels like', value: formatTemp(current.feelsLikeC) },
@@ -26,8 +29,11 @@ export function CurrentCard({ city, data }: CurrentCardProps) {
             {city.name}
           </h2>
           <p className="truncate text-sm text-muted">{formatCityContext(city)}</p>
+          <div className="mt-2 empty:hidden">
+            <SourceBadge source={data.source} />
+          </div>
         </div>
-        <SourceBadge source={data.source} />
+        {action}
       </div>
 
       <div className="mt-6 flex items-center gap-4 sm:gap-6">

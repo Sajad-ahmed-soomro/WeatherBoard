@@ -3,7 +3,7 @@ import { capitalise, kindFromOwmId } from './conditions';
 import { requireKey } from './config';
 import { fetchJson } from './http';
 import { arr, num, obj, str } from './parse';
-import type { Condition, Coordinates, CurrentConditions, WeatherData } from './types';
+import type { Condition, Coordinates, CurrentConditions, CurrentSnapshot, WeatherData } from './types';
 
 const BASE = 'https://api.openweathermap.org/data/2.5';
 
@@ -59,16 +59,30 @@ export function normaliseOwm(coords: Coordinates, weatherBody: unknown, forecast
   };
 }
 
-export async function fetchOwmWeather(coords: Coordinates, signal?: AbortSignal): Promise<WeatherData> {
-  const params = new URLSearchParams({
+function owmParams(coords: Coordinates): URLSearchParams {
+  return new URLSearchParams({
     lat: coords.lat.toFixed(4),
     lon: coords.lon.toFixed(4),
     units: 'metric',
     appid: requireKey('VITE_OWM_KEY'),
   });
+}
+
+export async function fetchOwmWeather(coords: Coordinates, signal?: AbortSignal): Promise<WeatherData> {
+  const params = owmParams(coords);
   const [weatherBody, forecastBody] = await Promise.all([
     fetchJson(`${BASE}/weather?${params}`, { signal }),
     fetchJson(`${BASE}/forecast?${params}`, { signal }),
   ]);
   return normaliseOwm(coords, weatherBody, forecastBody, Date.now());
+}
+
+/** Pure: raw /weather body → CurrentSnapshot. Exported for fixture tests. */
+export function normaliseOwmCurrent(weatherBody: unknown, fetchedAt: number): CurrentSnapshot {
+  return { source: 'owm', fetchedAt, current: parseCurrent(weatherBody).current };
+}
+
+export async function fetchOwmCurrent(coords: Coordinates, signal?: AbortSignal): Promise<CurrentSnapshot> {
+  const body = await fetchJson(`${BASE}/weather?${owmParams(coords)}`, { signal });
+  return normaliseOwmCurrent(body, Date.now());
 }
