@@ -5,6 +5,9 @@ export interface Coordinates {
 
 export interface City extends Coordinates {
   id: string;
+  /** GeoDB place type, e.g. "CITY" or "ADM2" (admin area). */
+  type: string;
+  /** Display name; admin suffixes like "Division" are already stripped. */
   name: string;
   region: string | null;
   country: string;

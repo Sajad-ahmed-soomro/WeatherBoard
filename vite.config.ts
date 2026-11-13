@@ -37,6 +37,7 @@ export default defineConfig({
   ],
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: process.env.SMOKE ? ['scripts/**/*.live.test.ts'] : ['src/**/*.test.{ts,tsx}'],
+    testTimeout: process.env.SMOKE ? 20_000 : 5_000,
   },
 });

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.next/
+.git/
+**/*.min.js
+package-lock.json
+yarn.lock
+.agy-index.json
+.agy-memory/
+*.png
+*.jpg
+*.woff
+*.woff2

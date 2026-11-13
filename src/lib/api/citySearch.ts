@@ -12,8 +12,16 @@ import type { City } from './types';
  * - retries a 429 once after Retry-After (default 1 s), then throws a rate_limit AppError.
  */
 
+export interface SearchRequestOptions {
+  signal?: AbortSignal;
+  /** Called when a 429 triggers the single automatic retry. */
+  onRetry?: () => void;
+}
+
 export interface CitySearchClient {
-  search(query: string, signal?: AbortSignal): Promise<City[]>;
+  search(query: string, options?: SearchRequestOptions): Promise<City[]>;
+  /** Synchronous cache lookup, so cached results can render without a loading state. */
+  peek(query: string): City[] | undefined;
 }
 
 interface CitySearchOptions {
@@ -80,11 +88,12 @@ export function createCitySearchClient(options: CitySearchOptions = {}): CitySea
     return fetchCities(key, signal);
   }
 
-  async function fetchWithRetry(key: string, signal: AbortSignal | undefined): Promise<City[]> {
+  async function fetchWithRetry(key: string, { signal, onRetry }: SearchRequestOptions): Promise<City[]> {
     try {
       return await send(key, signal, 0);
     } catch (err) {
       if (!isRateLimited(err)) throw err;
+      onRetry?.();
       try {
         return await send(key, signal, err.retryAfterMs ?? defaultRetryAfterMs);
       } catch (retryErr) {
@@ -100,12 +109,16 @@ export function createCitySearchClient(options: CitySearchOptions = {}): CitySea
   }
 
   return {
-    async search(query, signal) {
+    peek(query) {
+      return cache.get(normaliseQuery(query));
+    },
+
+    async search(query, options = {}) {
       const key = normaliseQuery(query);
       const cached = cache.get(key);
       if (cached) return cached;
       try {
-        const cities = await fetchWithRetry(key, signal);
+        const cities = await fetchWithRetry(key, options);
         cache.set(key, cities);
         return cities;
       } catch (err) {

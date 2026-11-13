@@ -5,6 +5,7 @@ import type { City } from './types';
 
 const LAHORE: City = {
   id: '1',
+  type: 'ADM2',
   name: 'Lahore',
   region: 'Punjab',
   country: 'Pakistan',
@@ -79,18 +80,29 @@ describe('city search client', () => {
     const { client, fetchCities } = setup();
     await client.search('la');
     const controller = new AbortController();
-    const pending = client.search('lah', controller.signal).catch((e: unknown) => e);
+    const pending = client.search('lah', { signal: controller.signal }).catch((e: unknown) => e);
     controller.abort();
     await expect(pending).resolves.toMatchObject({ name: 'AbortError' });
     await vi.advanceTimersByTimeAsync(2000);
     expect(fetchCities).toHaveBeenCalledTimes(1);
   });
 
+  it('peeks the cache without a network call', async () => {
+    const { client, fetchCities } = setup();
+    expect(client.peek('lahore')).toBeUndefined();
+    await client.search('Lahore');
+    expect(client.peek(' LAHORE')).toEqual([LAHORE]);
+    expect(fetchCities).toHaveBeenCalledTimes(1);
+  });
+
   it('retries a 429 once after Retry-After, then succeeds', async () => {
     const { client, fetchCities } = setup();
     fetchCities.mockRejectedValueOnce(new HttpError(429, 2000));
+    const onRetry = vi.fn();
 
-    const result = client.search('ka');
+    const result = client.search('ka', { onRetry });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onRetry).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(1999);
     expect(fetchCities).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(1);
