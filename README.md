@@ -2,8 +2,8 @@
 
 An installable weather dashboard. Search any city with live autocomplete, see current conditions and a 5-day forecast, keep up to 5 favourites, use it offline for the last city you viewed, and get a daily weather reminder.
 
-- **Live URL:** _TODO: add the Vercel URL_
-- **Repository:** _TODO: add the GitHub URL_
+- **Live URL:** https://weatherboard-bay.vercel.app/
+- **Repository:** https://github.com/Sajad-ahmed-soomro/WeatherBoard
 
 Built for the Edspire Frontend (React) technical challenge. The agent prompt history is in [PROMPTS.md](PROMPTS.md).
 

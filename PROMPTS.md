@@ -8,7 +8,7 @@ The complete agent prompt history for WeatherBoard, in order, copied verbatim fr
 - **Model:** Claude Opus 5.5
 - **Session:** one continuous session, 13 Nov 2026 22:52 → 14 Nov 2026 01:50 PKT. The context was compacted automatically once (00:37, between prompts 8 and 9); no prompts were lost.
 
-> _TODO (author): the brief lists Cursor, Antigravity or OpenCode. If you used another tool for any part of this project, name it and add those prompts here._
+> **IDE / agent used:** Antigravity, running Claude Opus 4.6. I also used Claude (claude.ai chat) outside the IDE to draft the master prompt and review each agent report before approving the next step.
 
 ## Strategy in one paragraph
 
