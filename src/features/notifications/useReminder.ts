@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { WeatherData } from '../../lib/api/types';
+import type { TempUnit } from '../../lib/units/format';
 import { getWeather } from '../../lib/api/weather';
 import { REMINDER_TAG, runDailyCheck, type ReminderContent } from './dailyCheck';
 import { startingFrom } from './schedule';
@@ -37,6 +38,8 @@ const browserPlatform: ReminderPlatform = {
 interface UseReminderOptions {
   /** The city the reminder reports on: the one currently shown, if any. */
   city: ReminderCity | null;
+  /** The page's °C/°F choice, copied into the reminder settings. */
+  unit?: TempUnit;
   repo?: SettingsRepo;
   platform?: ReminderPlatform;
   fetchWeather?: (lat: number, lon: number) => Promise<WeatherData>;
@@ -57,7 +60,7 @@ const SAVE_ERROR = "Couldn't save reminder settings on this device (storage may 
 const fetchForReminder = (lat: number, lon: number) => getWeather(lat, lon);
 const systemNow = () => new Date();
 
-export function useReminder({ city, repo = defaultRepo, platform = browserPlatform, fetchWeather = fetchForReminder, now = systemNow }: UseReminderOptions) {
+export function useReminder({ city, unit = 'c', repo = defaultRepo, platform = browserPlatform, fetchWeather = fetchForReminder, now = systemNow }: UseReminderOptions) {
   const supported = platform.supported();
   const [settings, setSettings] = useState<ReminderSettings | null>(null);
   const [permission, setPermission] = useState<NotificationPermission>(() => (supported ? platform.permission() : 'denied'));
@@ -108,9 +111,9 @@ export function useReminder({ city, repo = defaultRepo, platform = browserPlatfo
   const enable = useCallback(async () => {
     if (!city) return;
     const { platform: p, now: clock } = deps.current;
-    if (!(await persist((s) => startingFrom({ ...s, enabled: true, city }, clock())))) return;
+    if (!(await persist((s) => startingFrom({ ...s, enabled: true, city, unit }, clock())))) return;
     setDelivery(await p.enableBackground(await p.registration()));
-  }, [city, persist]);
+  }, [city, persist, unit]);
 
   /** Step 1 of turning reminders on: explain first, unless permission was already given. */
   const requestEnable = useCallback(() => {
@@ -149,12 +152,12 @@ export function useReminder({ city, repo = defaultRepo, platform = browserPlatfo
     [persist],
   );
 
-  // Keep the reminder on the city being viewed (written to IndexedDB, mirrored when stored).
-  const followCity = settings?.enabled === true && city !== null && !sameCity(settings.city, city);
+  // Keep the reminder on the city being viewed and the chosen unit (written to IndexedDB, mirrored when stored).
+  const outOfSync = settings?.enabled === true && ((city !== null && !sameCity(settings.city, city)) || settings.unit !== unit);
   useEffect(() => {
-    if (!followCity || !city) return;
-    void persist((s) => (s.enabled ? { ...s, city } : s));
-  }, [followCity, city, persist]);
+    if (!outOfSync) return;
+    void persist((s) => (s.enabled ? { ...s, city: city ?? s.city, unit } : s));
+  }, [outOfSync, city, unit, persist]);
 
   // In-app fallback: check when the app opens, when the tab becomes visible, and every minute.
   const enabledAndAllowed = settings?.enabled === true && permission === 'granted';

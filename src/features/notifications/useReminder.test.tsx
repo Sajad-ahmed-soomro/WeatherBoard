@@ -28,7 +28,11 @@ function fakePlatform(initial: NotificationPermission = 'default', answer: Notif
   return { platform, showNotification };
 }
 
-function setup({ city = KARACHI, platform = fakePlatform().platform, clock = '06:00' }: { city?: ReminderCity | null; platform?: ReminderPlatform; clock?: string } = {}) {
+function setup({
+  city = KARACHI,
+  platform = fakePlatform().platform,
+  clock = '06:00',
+}: { city?: ReminderCity | null; platform?: ReminderPlatform; clock?: string } = {}) {
   const repo = createSettingsRepo(createIdbStore('t', 'settings', () => new IDBFactory()));
   const fetchWeather = vi.fn((): Promise<WeatherData> => Promise.reject(new Error('no network in tests')));
   const now = () => new Date(`2026-11-14T${clock}:00`);
@@ -87,6 +91,23 @@ describe('useReminder', () => {
     await settle();
     expect(result.current.view).toEqual({ kind: 'denied' });
     expect((await repo.load()).enabled).toBe(false);
+  });
+
+  it('copies the °C/°F choice into the reminder settings while on', async () => {
+    const { platform } = fakePlatform('granted');
+    const repo = createSettingsRepo(createIdbStore('u', 'settings', () => new IDBFactory()));
+    const fetchWeather = () => Promise.reject(new Error('offline'));
+    const now = () => new Date('2026-11-14T06:00:00');
+    const { result, rerender } = renderHook(({ unit }) => useReminder({ city: KARACHI, unit, repo, platform, fetchWeather, now }), {
+      initialProps: { unit: 'c' as 'c' | 'f' },
+    });
+    await settle();
+    act(() => result.current.requestEnable());
+    await settle();
+    expect((await repo.load()).unit).toBe('c');
+
+    rerender({ unit: 'f' });
+    await waitFor(async () => expect((await repo.load()).unit).toBe('f'));
   });
 
   it('rejects an invalid time without saving, and saves a valid one', async () => {

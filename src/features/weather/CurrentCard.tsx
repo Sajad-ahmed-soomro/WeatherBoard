@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { WeatherIcon } from '../../components/ui/WeatherIcon';
 import type { City, WeatherData } from '../../lib/api/types';
-import { formatHumidity, formatTemp, formatWind } from '../../lib/units/format';
+import { formatHumidity, formatWind } from '../../lib/units/format';
+import { useTempFormat } from '../preferences/units';
 import { formatCityContext } from '../search/formatCity';
 import { SourceBadge } from './SourceBadge';
 import { UpdatedAgo } from './UpdatedAgo';
@@ -15,6 +16,7 @@ interface CurrentCardProps {
 
 export function CurrentCard({ city, data, action }: CurrentCardProps) {
   const { current } = data;
+  const formatTemp = useTempFormat();
   const stats = [
     { label: 'Feels like', value: formatTemp(current.feelsLikeC) },
     { label: 'Humidity', value: formatHumidity(current.humidity) },

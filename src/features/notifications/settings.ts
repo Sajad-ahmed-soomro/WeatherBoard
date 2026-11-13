@@ -1,4 +1,5 @@
 import { createIdbStore, type IdbStore } from '../../lib/storage/idb';
+import type { TempUnit } from '../../lib/units/format';
 
 /** The place the reminder reports on: the last city viewed while reminders were on. */
 export interface ReminderCity {
@@ -14,9 +15,11 @@ export interface ReminderSettings {
   city: ReminderCity | null;
   /** Device-local YYYY-MM-DD of the last day a reminder was shown (or skipped). */
   lastShownDate: string | null;
+  /** Mirrors the page's °C/°F choice; the service worker can't read localStorage. */
+  unit: TempUnit;
 }
 
-export const DEFAULT_SETTINGS: ReminderSettings = { enabled: false, time: '07:00', city: null, lastShownDate: null };
+export const DEFAULT_SETTINGS: ReminderSettings = { enabled: false, time: '07:00', city: null, lastShownDate: null, unit: 'c' };
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -47,6 +50,7 @@ export function readSettings(value: unknown): ReminderSettings {
     time: typeof value.time === 'string' && isValidTime(value.time) ? value.time : DEFAULT_SETTINGS.time,
     city: isReminderCity(value.city) ? { name: value.city.name, lat: value.city.lat, lon: value.city.lon } : null,
     lastShownDate: typeof value.lastShownDate === 'string' ? value.lastShownDate : null,
+    unit: value.unit === 'f' ? 'f' : 'c',
   };
 }
 

@@ -33,9 +33,11 @@ describe('settings', () => {
   it('reads stored values defensively', () => {
     expect(readSettings(undefined)).toEqual(DEFAULT_SETTINGS);
     expect(readSettings({ enabled: 'yes', time: '99:99', city: { name: 'X' }, lastShownDate: 5 })).toEqual(DEFAULT_SETTINGS);
-    expect(readSettings({ enabled: true, time: '06:15', city: KARACHI, lastShownDate: '2026-11-13' })).toEqual(
-      on({ time: '06:15', lastShownDate: '2026-11-13' }),
+    expect(readSettings({ enabled: true, time: '06:15', city: KARACHI, lastShownDate: '2026-11-13', unit: 'f' })).toEqual(
+      on({ time: '06:15', lastShownDate: '2026-11-13', unit: 'f' }),
     );
+    // Settings saved before the unit existed read as °C.
+    expect(readSettings({ enabled: true, time: '06:15', city: KARACHI }).unit).toBe('c');
   });
 
   it('persists changes in IndexedDB and claims each day only once', async () => {
@@ -87,6 +89,7 @@ describe('runDailyCheck', () => {
   it('writes readable reminder text, with or without data', () => {
     expect(reminderContent(KARACHI, weather())).toEqual({ title: 'Karachi today', body: '24° now, clear sky. Today 20° to 31°, few clouds.' });
     expect(reminderContent(KARACHI, null).body).toMatch(/Couldn't load today's forecast/);
+    expect(reminderContent(KARACHI, weather(), 'f').body).toBe('76° now, clear sky. Today 67° to 88°, few clouds.');
   });
 
   it('does nothing when not due', async () => {

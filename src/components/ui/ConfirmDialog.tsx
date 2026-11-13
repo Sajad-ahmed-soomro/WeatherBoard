@@ -25,7 +25,7 @@ export function ConfirmDialog({ open, title, description, confirmLabel, cancelLa
       ref={dialogRef}
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
-      className="w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-ink/40"
+      className="w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-black/50"
       {...dialogProps}
     >
       <div className="p-6">
@@ -42,7 +42,7 @@ export function ConfirmDialog({ open, title, description, confirmLabel, cancelLa
           <button
             type="button"
             onClick={onConfirm}
-            className={`min-h-touch rounded-lg px-4 text-sm font-medium hover:opacity-90 ${tone === 'danger' ? 'bg-danger text-white' : 'bg-ink text-surface'}`}
+            className={`min-h-touch rounded-lg px-4 text-sm font-medium hover:opacity-90 ${tone === 'danger' ? 'bg-danger text-surface' : 'bg-ink text-surface'}`}
           >
             {confirmLabel}
           </button>

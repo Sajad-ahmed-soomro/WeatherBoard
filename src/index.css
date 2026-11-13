@@ -15,6 +15,19 @@
     --warn: 146 64 14;
   }
 
+  /* Dark tokens. WCAG contrast on surface (slate-900): ink 16.3, muted 7.0, accent 7.0, danger 6.5, warn 10.7. */
+  :root.dark {
+    color-scheme: dark;
+    --canvas: 2 6 23;
+    --surface: 15 23 42;
+    --line: 51 65 85;
+    --ink: 241 245 249;
+    --muted: 148 163 184;
+    --accent: 96 165 250;
+    --danger: 248 113 113;
+    --warn: 251 191 36;
+  }
+
   html {
     -webkit-text-size-adjust: 100%;
   }

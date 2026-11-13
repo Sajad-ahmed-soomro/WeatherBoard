@@ -4,8 +4,15 @@ function roundClean(value: number): number {
   return rounded === 0 ? 0 : rounded;
 }
 
-export function formatTemp(celsius: number): string {
-  return `${roundClean(celsius)}°`;
+export type TempUnit = 'c' | 'f';
+
+export function toUnit(celsius: number, unit: TempUnit): number {
+  return unit === 'f' ? (celsius * 9) / 5 + 32 : celsius;
+}
+
+/** "22°". The unit is shown once in the UI (the °C/°F switch), as weather apps usually do. */
+export function formatTemp(celsius: number, unit: TempUnit = 'c'): string {
+  return `${roundClean(toUnit(celsius, unit))}°`;
 }
 
 export function formatWind(metresPerSecond: number): string {

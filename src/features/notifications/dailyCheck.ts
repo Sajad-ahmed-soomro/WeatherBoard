@@ -1,5 +1,5 @@
 import type { WeatherData } from '../../lib/api/types';
-import { formatTemp } from '../../lib/units/format';
+import { formatTemp, type TempUnit } from '../../lib/units/format';
 import { isDue, localDateKey } from './schedule';
 import type { ReminderCity, SettingsRepo } from './settings';
 
@@ -11,11 +11,11 @@ export interface ReminderContent {
 }
 
 /** Text for the reminder. Without data (offline, API down) it still points to the app honestly. */
-export function reminderContent(city: ReminderCity, data: WeatherData | null): ReminderContent {
+export function reminderContent(city: ReminderCity, data: WeatherData | null, unit: TempUnit = 'c'): ReminderContent {
   if (!data) return { title: `Weather for ${city.name}`, body: "Couldn't load today's forecast. Tap to open WeatherBoard and try again." };
   const today = data.daily[0];
-  const now = `${formatTemp(data.current.tempC)} now, ${data.current.condition.label.toLowerCase()}.`;
-  const range = today ? ` Today ${formatTemp(today.minC)} to ${formatTemp(today.maxC)}, ${today.condition.label.toLowerCase()}.` : '';
+  const now = `${formatTemp(data.current.tempC, unit)} now, ${data.current.condition.label.toLowerCase()}.`;
+  const range = today ? ` Today ${formatTemp(today.minC, unit)} to ${formatTemp(today.maxC, unit)}, ${today.condition.label.toLowerCase()}.` : '';
   return { title: `${city.name} today`, body: `${now}${range}` };
 }
 
@@ -39,6 +39,6 @@ export async function runDailyCheck({ repo, fetchWeather, show, now = () => new 
   if (!(await repo.claimDay(localDateKey(at)))) return 'already-shown';
 
   const data = await fetchWeather(settings.city.lat, settings.city.lon).catch(() => null);
-  await show(reminderContent(settings.city, data));
+  await show(reminderContent(settings.city, data, settings.unit));
   return 'shown';
 }

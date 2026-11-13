@@ -5,6 +5,10 @@ import { FavouriteToggle } from './features/favourites/FavouriteToggle';
 import type { LatestViewed } from './features/favourites/miniTemps';
 import { useFavourites } from './features/favourites/useFavourites';
 import { useMiniTemps } from './features/favourites/useMiniTemps';
+import { DisplaySwitches } from './features/preferences/DisplaySwitches';
+import { UnitContext } from './features/preferences/units';
+import { useTheme } from './features/preferences/useTheme';
+import { useUnits } from './features/preferences/useUnits';
 import { ReminderCard } from './features/notifications/ReminderCard';
 import { ReminderExplainer } from './features/notifications/ReminderExplainer';
 import { useReminder } from './features/notifications/useReminder';
@@ -42,7 +46,9 @@ export function App() {
     () => (state.status === 'success' ? { name: state.city.name, lat: state.city.lat, lon: state.city.lon } : null),
     [state],
   );
-  const reminder = useReminder({ city: reminderCity });
+  const theme = useTheme();
+  const units = useUnits();
+  const reminder = useReminder({ city: reminderCity, unit: units.unit });
 
   const appUpdate = useAppUpdate();
   const installPrompt = useInstallPrompt();
@@ -82,75 +88,80 @@ export function App() {
   const activeId = state.status === 'idle' ? null : state.city.id;
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <span className="text-base font-semibold tracking-tight">WeatherBoard</span>
-          <InstallButton canInstall={installPrompt.canInstall} onInstall={() => void installPrompt.install()} />
-        </div>
-      </header>
-      <OfflineBanner
-        online={online}
-        showing={state.status === 'success' ? { cityName: state.city.name, fetchedAt: state.data.fetchedAt } : null}
-      />
-      <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
-        <div className="max-w-xl">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Weather, at a glance</h1>
-          <p className="mb-6 mt-2 text-sm text-muted">Current conditions and a 5-day forecast for any city.</p>
-          <CitySearch onSelect={load} inputRef={searchRef} />
-        </div>
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
-          <FavouritesPanel
-            favourites={favourites.favourites}
-            activeId={activeId}
-            persistent={favourites.persistent}
-            tempFor={tempFor}
-            onOpen={load}
-            onRemove={requestRemove}
-            headingRef={favouritesHeadingRef}
-          />
-          <div className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-            {state.status === 'idle' ? (
-              <EmptyState onPick={load} onEditSearch={focusSearch} />
-            ) : (
-              <WeatherPanel state={state} onRetry={retry} onEditSearch={focusSearch} renderAction={renderFavouriteToggle} />
-            )}
+    <UnitContext.Provider value={units.unit}>
+      <div className="flex min-h-dvh flex-col">
+        <header className="border-b border-line bg-surface">
+          <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 sm:px-6">
+            <span className="text-base font-semibold tracking-tight">WeatherBoard</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <InstallButton canInstall={installPrompt.canInstall} onInstall={() => void installPrompt.install()} />
+              <DisplaySwitches theme={theme.preference} onThemeChange={theme.setPreference} unit={units.unit} onUnitChange={units.setUnit} />
+            </div>
           </div>
-          <ReminderCard
-            view={reminder.view}
-            canEnable={reminder.canEnable}
-            timeValue={reminder.timeValue}
-            timeError={reminder.timeError}
-            saveError={reminder.saveError}
-            onEnable={reminder.requestEnable}
-            onDisable={reminder.disable}
-            onTimeChange={reminder.changeTime}
-            className="lg:col-start-1"
-          />
-        </div>
-      </main>
-      <ReminderExplainer
-        open={reminder.explainerOpen}
-        time={reminder.timeValue}
-        cityName={reminderCity?.name ?? 'your city'}
-        onContinue={reminder.confirmExplainer}
-        onCancel={reminder.cancelExplainer}
-      />
-      <ConfirmDialog
-        open={favourites.pendingRemoval !== null}
-        title={`Remove ${favourites.pendingRemoval?.name ?? 'city'} from favourites?`}
-        description="You can add it again any time from its weather card."
-        confirmLabel="Remove"
-        onConfirm={favourites.confirmRemove}
-        onCancel={favourites.cancelRemove}
-        fallbackFocus={favouritesHeadingRef}
-      />
-      <UpdateToast
-        needRefresh={appUpdate.needRefresh}
-        offlineReady={appUpdate.offlineReady}
-        onUpdate={() => void appUpdate.update()}
-        onDismiss={appUpdate.dismiss}
-      />
-    </div>
+        </header>
+        <OfflineBanner
+          online={online}
+          showing={state.status === 'success' ? { cityName: state.city.name, fetchedAt: state.data.fetchedAt } : null}
+        />
+        <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+          <div className="max-w-xl">
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Weather, at a glance</h1>
+            <p className="mb-6 mt-2 text-sm text-muted">Current conditions and a 5-day forecast for any city.</p>
+            <CitySearch onSelect={load} inputRef={searchRef} />
+          </div>
+          <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
+            <FavouritesPanel
+              favourites={favourites.favourites}
+              activeId={activeId}
+              persistent={favourites.persistent}
+              tempFor={tempFor}
+              onOpen={load}
+              onRemove={requestRemove}
+              headingRef={favouritesHeadingRef}
+            />
+            <div className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+              {state.status === 'idle' ? (
+                <EmptyState onPick={load} onEditSearch={focusSearch} />
+              ) : (
+                <WeatherPanel state={state} onRetry={retry} onEditSearch={focusSearch} renderAction={renderFavouriteToggle} />
+              )}
+            </div>
+            <ReminderCard
+              view={reminder.view}
+              canEnable={reminder.canEnable}
+              timeValue={reminder.timeValue}
+              timeError={reminder.timeError}
+              saveError={reminder.saveError}
+              onEnable={reminder.requestEnable}
+              onDisable={reminder.disable}
+              onTimeChange={reminder.changeTime}
+              className="lg:col-start-1"
+            />
+          </div>
+        </main>
+        <ReminderExplainer
+          open={reminder.explainerOpen}
+          time={reminder.timeValue}
+          cityName={reminderCity?.name ?? 'your city'}
+          onContinue={reminder.confirmExplainer}
+          onCancel={reminder.cancelExplainer}
+        />
+        <ConfirmDialog
+          open={favourites.pendingRemoval !== null}
+          title={`Remove ${favourites.pendingRemoval?.name ?? 'city'} from favourites?`}
+          description="You can add it again any time from its weather card."
+          confirmLabel="Remove"
+          onConfirm={favourites.confirmRemove}
+          onCancel={favourites.cancelRemove}
+          fallbackFocus={favouritesHeadingRef}
+        />
+        <UpdateToast
+          needRefresh={appUpdate.needRefresh}
+          offlineReady={appUpdate.offlineReady}
+          onUpdate={() => void appUpdate.update()}
+          onDismiss={appUpdate.dismiss}
+        />
+      </div>
+    </UnitContext.Provider>
   );
 }

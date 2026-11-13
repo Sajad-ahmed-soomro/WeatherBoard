@@ -8,6 +8,16 @@
     <meta name="theme-color" content="#0f172a" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180x180.png" />
+    <!-- Apply the saved theme before first paint (no flash). Mirrors src/features/preferences/theme.ts. -->
+    <script>
+      (function () {
+        try {
+          var saved = JSON.parse(localStorage.getItem('weatherboard:theme:v1') || '"system"');
+          var dark = saved === 'dark' || (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.classList.toggle('dark', dark);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

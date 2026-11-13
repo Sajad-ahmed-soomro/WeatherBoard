@@ -1,7 +1,8 @@
 import { WeatherIcon } from '../../components/ui/WeatherIcon';
 import type { WeatherData } from '../../lib/api/types';
 import { cityLocalDate } from '../../lib/time/cityTime';
-import { formatDay, formatTemp } from '../../lib/units/format';
+import { formatDay } from '../../lib/units/format';
+import { useTempFormat } from '../preferences/units';
 
 /** Position of a day's min–max inside the whole week's range, as percentages. */
 function rangeBar(min: number, max: number, weekMin: number, weekMax: number) {
@@ -10,6 +11,7 @@ function rangeBar(min: number, max: number, weekMin: number, weekMax: number) {
 }
 
 export function ForecastList({ data }: { data: WeatherData }) {
+  const formatTemp = useTempFormat();
   const today = cityLocalDate(Math.floor(data.current.observedAt / 1000), data.utcOffsetSec);
   const weekMin = Math.min(...data.daily.map((d) => d.minC));
   const weekMax = Math.max(...data.daily.map((d) => d.maxC));

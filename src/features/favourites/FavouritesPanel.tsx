@@ -3,7 +3,7 @@ import { CloseIcon, InfoIcon } from '../../components/ui/icons';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { WeatherIcon } from '../../components/ui/WeatherIcon';
 import type { City } from '../../lib/api/types';
-import { formatTemp } from '../../lib/units/format';
+import { useTempFormat } from '../preferences/units';
 import { MAX_FAVOURITES } from './favourites';
 import type { MiniTemp } from './miniTemps';
 
@@ -19,6 +19,7 @@ interface FavouritesPanelProps {
 }
 
 function MiniTempView({ temp }: { temp: MiniTemp }) {
+  const formatTemp = useTempFormat();
   if (temp.status === 'loading') {
     return (
       <>

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { City } from '../../lib/api/types';
-import { formatTemp } from '../../lib/units/format';
+import { useTempFormat } from '../preferences/units';
 import { CurrentCard } from './CurrentCard';
 import { ForecastList } from './ForecastList';
 import type { WeatherState } from './useWeather';
@@ -14,7 +14,7 @@ interface WeatherPanelProps {
   renderAction?: (city: City) => ReactNode;
 }
 
-function announce(state: WeatherPanelProps['state']): string {
+function announce(state: WeatherPanelProps['state'], formatTemp: (celsius: number) => string): string {
   switch (state.status) {
     case 'loading':
       return `Loading weather for ${state.city.name}…`;
@@ -26,10 +26,11 @@ function announce(state: WeatherPanelProps['state']): string {
 }
 
 export function WeatherPanel({ state, onRetry, onEditSearch, renderAction }: WeatherPanelProps) {
+  const formatTemp = useTempFormat();
   return (
     <div aria-busy={state.status === 'loading'}>
       <p className="sr-only" aria-live="polite">
-        {announce(state)}
+        {announce(state, formatTemp)}
       </p>
       {state.status === 'loading' && <WeatherSkeleton />}
       {state.status === 'error' && (
